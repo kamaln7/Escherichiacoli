@@ -24,11 +24,13 @@ for name, network of config.networks
     realName: config.nick
   }
   networks[name].friendlyName = name
+  networks[name].paused = false
 
   networks[name].once 'registered', ->
     console_out 'Connected to ' + color(@friendlyName, 'green')
   networks[name].addListener 'error', console_out
   networks[name].addListener 'message', (from, to, message) ->
+    return if @paused
     return if config.ignore.indexOf(from) > -1
 
     for trigger in config.triggers
@@ -93,3 +95,43 @@ rl.on 'line', (line) ->
         networksToQuit = if network is '*' then Object.keys networks else [network]
         for network in networksToQuit
           networks[network].disconnect message
+    when 'pause'
+      args = args.split ' '
+      network = args.shift()
+
+      return console_out color('Usage: pause [network]', 'blue') if not network?
+      return console_out color('Invalid network', 'red') if not networks[network]?
+
+      networksToPause = if network is '*' then Object.keys networks else [network]
+      for network in networksToPause
+        console_out color("Pausing #{network}", 'green')
+        networks[network].paused = true
+    when 'unpause'
+      args = args.split ' '
+      network = args.shift()
+
+      return console_out color('Usage: unpause [network]', 'blue') if not network?
+      return console_out color('Invalid network', 'red') if not networks[network]?
+
+      networksToUnpause = if network is '*' then Object.keys networks else [network]
+      for network in networksToUnpause
+        console_out color("Unpausing #{network}", 'green')
+        networks[network].paused = false
+    when 'ignore'
+      args = args.split ' '
+      user = args.shift()
+
+      return console_out color('Usage: ignore [user]', 'blue') if not user?
+      return console_out color('Invalid user', 'red') if user[0] is '#'
+
+      config.ignore.push user
+      console_out color("Ignored #{user}", 'green')
+    when 'uningore'
+      args = args.split ' '
+      user = args.shift()
+
+      return console_out color('Usage: unignore [user]', 'blue') if not user?
+      return console_out color('Invalid user', 'red') if user[0] is '#' or not config.ignore[user]
+
+      config.ignore.splice config.ignore.indexOf(user), 1
+      console_out color("Unignored #{user}", 'green')
